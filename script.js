@@ -1,55 +1,45 @@
 (function() {
     const PROMPT_RAW_URL = "https://raw.githubusercontent.com/ghost-mvt/XUZ/main/ai/memory.md";
-    let fetchedSystemPrompt = "Default system prompt fallback.";
+    let fetchedSystemPrompt = "You are a helpful AI assistant. Provide clear and concise answers.";
 
-    const ENCRYPTED_API_KEYS = [
-        "IjoDEh0SDF9SXRk/Xk1UDFUAGh8eDUZVVwcYHg==",
-        "IjoDEh1bSUpQVBk/Xk1TGxUAHBweChxQBgMZHA==",
-        "IjoDEh1BWh1aXFk/Xk0bGFUHHBsaBAJWUggXFA==",
-        "IjoDEhlURVJAUxk/Xk0FGxsYDR0cBhxRBgcFGQ==",
-        "IjoDEhhBSRpSRhk/Xk1eGxsaGRsdBAVaAAcYFQ==",
-        "IjoDEhIHF1pCShk/Xk1dGw0eHwIeAF5VAQAdBA==",
-        "IjoDEh5VU1pXSRk/Xk1TBhwbHxgCGAVVAwcbBA=="
+    const DEFAULT_MODELS = [
+        "meta-llama/Llama-3.1-8B-Instruct",
+        "mistralai/Mistral-7B-Instruct-v0.1",
+        "NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO",
+        "gpt2",
+        "facebook/opt-350m"
     ];
 
-    const MODELS_API = "https://router.huggingface.co/v1/models";
-
     let currentTokenIndex = -1;
-    let availableModels = []; 
+    let availableModels = DEFAULT_MODELS; 
     let conversationHistory = []; 
 
     let synth = window.speechSynthesis;
     let utterance = new SpeechSynthesisUtterance();
 
-    function getActiveToken(index) {
-        if (typeof window.getDecryptedKey === "function") {
-            return window.getDecryptedKey(ENCRYPTED_API_KEYS[index]);
+    function getActiveToken() {
+        const userApiKey = document.getElementById("apiKeyInput")?.value?.trim();
+        
+        if (userApiKey) {
+            return userApiKey;
         }
-        const LAB_KEY = "CyberLabSecretKey_2026_SecureVault";
-        try {
-            const rawText = atob(ENCRYPTED_API_KEYS[index]);
-            let res = "";
-            for (let i = 0; i < rawText.length; i++) {
-                res += String.fromCharCode(rawText.charCodeAt(i) ^ LAB_KEY.charCodeAt(i % LAB_KEY.length));
-            }
-            return res;
-        } catch (e) {
-            return "";
-        }
+
+        // Fallback: return empty (will require user to provide their own key)
+        return "";
     }
 
     window.updateTokenDisplay = function() {
         const tokenEl = document.getElementById("currentTokenValue");
-        if (tokenEl && currentTokenIndex !== -1) {
-            tokenEl.innerText = getActiveToken(currentTokenIndex);
+        const userApiKey = document.getElementById("apiKeyInput")?.value?.trim();
+        
+        if (tokenEl) {
+            if (userApiKey) {
+                tokenEl.innerText = "✓ Using custom API key";
+            } else {
+                tokenEl.innerText = "⚠ No API key provided";
+            }
         }
     };
-
-    function getRandomKeyIndex(excludedIndices = []) {
-        const available = ENCRYPTED_API_KEYS.map((_, i) => i).filter(i => !excludedIndices.includes(i));
-        if (available.length === 0) return -1;
-        return available[Math.floor(Math.random() * available.length)];
-    }
 
     async function fetchGithubPrompt() {
         try {
@@ -58,7 +48,8 @@
                 fetchedSystemPrompt = await res.text();
             }
         } catch (err) {
-            console.error("Error fetching prompt:", err);
+            console.warn("Could not fetch prompt from GitHub, using default.");
+            fetchedSystemPrompt = "You are a helpful AI assistant. Provide clear and concise answers.";
         }
     }
 
@@ -75,48 +66,56 @@
         }
     }
 
+    function loadSavedApiKey() {
+        const savedKey = localStorage.getItem("huggingFaceApiKey");
+        const apiKeyInput = document.getElementById("apiKeyInput");
+        if (savedKey && apiKeyInput) {
+            apiKeyInput.value = savedKey;
+        }
+    }
+
     function saveModel(modelName) {
         if (modelName) {
             localStorage.setItem("selectedModel", modelName);
         }
     }
 
-    async function fetchModels(triedIndices = []) {
+    function saveApiKey(apiKey) {
+        if (apiKey) {
+            localStorage.setItem("huggingFaceApiKey", apiKey);
+        }
+    }
+
+    async function fetchModels() {
         const searchInput = document.getElementById("modelSearch");
         const sendBtn = document.getElementById("sendBtn");
-        const output = document.getElementById("explanationOutput");
+        const userApiKey = document.getElementById("apiKeyInput")?.value?.trim();
 
-        const keyIndex = getRandomKeyIndex(triedIndices);
-        if (keyIndex === -1) {
-            searchInput.placeholder = "Search models...";
-            sendBtn.disabled = false;
-            return;
+        // Try to fetch real models if user provided an API key
+        if (userApiKey) {
+            try {
+                const res = await fetch("https://huggingface.co/api/models", {
+                    headers: { "Authorization": `Bearer ${userApiKey}` }
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) {
+                        availableModels = data.slice(0, 50).map(m => m.id);
+                        searchInput.placeholder = "Search models...";
+                        sendBtn.disabled = false;
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.warn("Could not fetch models, using defaults");
+            }
         }
 
-        currentTokenIndex = keyIndex;
-        updateTokenDisplay();
-
-        try {
-            const activeKey = getActiveToken(keyIndex);
-            const res = await fetch(MODELS_API, {
-                method: "GET",
-                headers: { "Authorization": `Bearer ${activeKey}` }
-            });
-            
-            if (!res.ok) return await fetchModels([...triedIndices, keyIndex]);
-
-            const data = await res.json();
-            if (data.data && Array.isArray(data.data)) {
-                availableModels = data.data.map(m => m.id);
-                searchInput.placeholder = "Search models...";
-                sendBtn.disabled = false;
-            }
-        } catch (err) {
-            if (triedIndices.length < ENCRYPTED_API_KEYS.length - 1) {
-                return await fetchModels([...triedIndices, keyIndex]);
-            }
-            sendBtn.disabled = false;
-        }
+        // Use default models
+        availableModels = DEFAULT_MODELS;
+        searchInput.placeholder = "Search models (defaults)...";
+        sendBtn.disabled = false;
     }
 
     window.copyText = function(event, elementId) {
@@ -129,6 +128,8 @@
             const orig = btn.innerText;
             btn.innerText = "Copied!";
             setTimeout(() => btn.innerText = orig, 1500);
+        }).catch(() => {
+            alert("Could not copy to clipboard");
         });
     };
 
@@ -156,21 +157,20 @@
         return matches.length > 0 ? matches.join("\n\n// --- NEXT CODE BLOCK ---\n\n") : "";
     }
 
-    async function executeApiFetch(selectedModel, messages, triedIndices = []) {
-        const keyIndex = getRandomKeyIndex(triedIndices);
-        if (keyIndex === -1) throw new Error("All API keys failed or network blocked.");
+    async function executeApiFetch(selectedModel, messages) {
+        const userApiKey = getActiveToken();
+        
+        if (!userApiKey) {
+            throw new Error("❌ No API Key Provided!\n\n1. Get a free Hugging Face API key at:\n   https://huggingface.co/settings/tokens\n\n2. Enter it in the 'API Key' field above\n\n3. Try again!");
+        }
 
-        currentTokenIndex = keyIndex;
-        updateTokenDisplay();
-
-        const activeKey = getActiveToken(keyIndex);
         const MODEL_URL = `https://api-inference.huggingface.co/models/${selectedModel}/v1/chat/completions`;
-
+        
         try {
             const response = await fetch(MODEL_URL, {
                 method: "POST",
                 headers: {
-                    "Authorization": `Bearer ${activeKey}`,
+                    "Authorization": `Bearer ${userApiKey}`,
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
@@ -181,17 +181,31 @@
                 })
             });
 
+            if (response.status === 401 || response.status === 403) {
+                throw new Error("❌ Invalid API Key!\n\nYour Hugging Face token is incorrect or expired.\n\nGet a new one at:\nhttps://huggingface.co/settings/tokens");
+            }
+
+            if (response.status === 429) {
+                throw new Error("⏱ Rate Limited!\n\nYou've made too many requests. Please wait a moment and try again.\n\n(Free tier has usage limits)");
+            }
+
             if (!response.ok) {
-                return await executeApiFetch(selectedModel, messages, [...triedIndices, keyIndex]);
+                const errorText = await response.text();
+                throw new Error(`❌ API Error (${response.status}):\n${errorText.substring(0, 200)}`);
             }
 
             const data = await response.json();
+            
+            if (!data.choices || !data.choices[0]?.message?.content) {
+                throw new Error("❌ Invalid response from API. Please try again.");
+            }
+
             return { response, data };
         } catch (err) {
-            if (triedIndices.length < ENCRYPTED_API_KEYS.length - 1) {
-                return await executeApiFetch(selectedModel, messages, [...triedIndices, keyIndex]);
+            if (err instanceof TypeError && err.message.includes("Failed to fetch")) {
+                throw new Error("❌ Network Error / CORS Issue\n\nMake sure:\n1. Your API key is correct\n2. You have an active internet connection\n3. The Hugging Face API is accessible");
             }
-            throw new Error("Network Error: Failed to fetch. Verify API key permissions or CORS.");
+            throw err;
         }
     }
 
@@ -204,18 +218,18 @@
         const sendBtn = document.getElementById("sendBtn");
 
         if (!selectedModel.trim() || !promptText.trim()) {
-            alert("Please select a model and enter text.");
+            alert("Please enter a model and prompt text.");
             return;
-        }
-
-        if (!fetchedSystemPrompt) {
-            await fetchGithubPrompt();
         }
 
         sendBtn.disabled = true;
         explanationOutput.className = "output-box";
-        explanationOutput.innerText = "Processing request...";
+        explanationOutput.innerText = "⏳ Processing...";
         codeContainer.style.display = "none";
+
+        if (!fetchedSystemPrompt || fetchedSystemPrompt === "You are a helpful AI assistant. Provide clear and concise answers.") {
+            await fetchGithubPrompt();
+        }
 
         if (conversationHistory.length === 0) {
             conversationHistory.push({ role: "system", content: fetchedSystemPrompt });
@@ -224,10 +238,11 @@
 
         try {
             const { data } = await executeApiFetch(selectedModel, conversationHistory);
-            const aiMessage = data.choices && data.choices[0] && data.choices[0].message ? data.choices[0].message.content : "No response content received.";
+            const aiMessage = data.choices[0].message.content;
 
             conversationHistory.push({ role: "assistant", content: aiMessage });
 
+            explanationOutput.className = "output-box";
             explanationOutput.innerText = aiMessage;
 
             const extractedCode = extractCode(aiMessage);
@@ -235,9 +250,16 @@
                 codeOutput.innerText = extractedCode;
                 codeContainer.style.display = "block";
             }
+
+            // Save API key
+            const apiKeyInput = document.getElementById("apiKeyInput");
+            if (apiKeyInput?.value) {
+                saveApiKey(apiKeyInput.value.trim());
+            }
         } catch (err) {
             explanationOutput.className = "output-box error";
-            explanationOutput.innerText = err.message;
+            explanationOutput.innerText = err.message || "Unknown error. Please try again.";
+            console.error("Error:", err);
         } finally {
             sendBtn.disabled = false;
         }
@@ -245,10 +267,20 @@
 
     document.addEventListener("DOMContentLoaded", () => {
         loadSavedModel();
-        currentTokenIndex = getRandomKeyIndex();
-        updateTokenDisplay();
+        loadSavedApiKey();
         fetchGithubPrompt();
         fetchModels();
+        updateTokenDisplay();
+
+        const apiKeyInput = document.getElementById("apiKeyInput");
+        if (apiKeyInput) {
+            apiKeyInput.addEventListener("change", () => {
+                saveApiKey(apiKeyInput.value.trim());
+                fetchModels();
+                updateTokenDisplay();
+            });
+            apiKeyInput.addEventListener("input", updateTokenDisplay);
+        }
 
         const modelSearch = document.getElementById("modelSearch");
         const modelDropdown = document.getElementById("modelDropdown");
@@ -260,7 +292,10 @@
                 selectedModelValue.value = modelSearch.value;
                 saveModel(modelSearch.value);
 
-                if (!term.trim()) { modelDropdown.classList.remove("active"); return; }
+                if (!term.trim()) { 
+                    modelDropdown.classList.remove("active"); 
+                    return; 
+                }
 
                 const filtered = availableModels.filter(m => m.toLowerCase().includes(term));
                 modelDropdown.innerHTML = "";
@@ -277,12 +312,15 @@
                     };
                     modelDropdown.appendChild(item);
                 });
+                
                 modelDropdown.classList.add("active");
             });
         }
 
         document.addEventListener("click", (e) => {
-            if (modelSearch && modelDropdown && !modelSearch.contains(e.target) && !modelDropdown.contains(e.target)) {
+            if (modelSearch && modelDropdown && 
+                !modelSearch.contains(e.target) && 
+                !modelDropdown.contains(e.target)) {
                 modelDropdown.classList.remove("active");
             }
         });
