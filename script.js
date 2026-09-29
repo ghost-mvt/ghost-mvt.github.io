@@ -12,7 +12,6 @@
         "IjoDEh5VU1pXSRk/Xk1TBhwbHxgCGAVVAwcbBA=="
     ];
 
-    const ROUTER_URL = "https://router.huggingface.co/v1/chat/completions";
     const MODELS_API = "https://router.huggingface.co/v1/models";
 
     let currentTokenIndex = -1;
@@ -89,9 +88,8 @@
 
         const keyIndex = getRandomKeyIndex(triedIndices);
         if (keyIndex === -1) {
-            searchInput.placeholder = "Error loading models";
-            output.className = "output-box error";
-            output.innerText = "Connection Error: API keys expired or invalid.";
+            searchInput.placeholder = "Search models...";
+            sendBtn.disabled = false;
             return;
         }
 
@@ -112,14 +110,12 @@
                 availableModels = data.data.map(m => m.id);
                 searchInput.placeholder = "Search models...";
                 sendBtn.disabled = false;
-                output.innerText = "Models loaded successfully.";
             }
         } catch (err) {
             if (triedIndices.length < ENCRYPTED_API_KEYS.length - 1) {
                 return await fetchModels([...triedIndices, keyIndex]);
             }
-            output.className = "output-box error";
-            output.innerText = "Network Error: " + err.message;
+            sendBtn.disabled = false;
         }
     }
 
@@ -168,9 +164,10 @@
         updateTokenDisplay();
 
         const activeKey = getActiveToken(keyIndex);
-        
+        const MODEL_URL = `https://api-inference.huggingface.co/models/${selectedModel}/v1/chat/completions`;
+
         try {
-            const response = await fetch(ROUTER_URL, {
+            const response = await fetch(MODEL_URL, {
                 method: "POST",
                 headers: {
                     "Authorization": `Bearer ${activeKey}`,
@@ -191,7 +188,10 @@
             const data = await response.json();
             return { response, data };
         } catch (err) {
-            return await executeApiFetch(selectedModel, messages, [...triedIndices, keyIndex]);
+            if (triedIndices.length < ENCRYPTED_API_KEYS.length - 1) {
+                return await executeApiFetch(selectedModel, messages, [...triedIndices, keyIndex]);
+            }
+            throw new Error("Network Error: Failed to fetch. Verify API key permissions or CORS.");
         }
     }
 
@@ -237,7 +237,7 @@
             }
         } catch (err) {
             explanationOutput.className = "output-box error";
-            explanationOutput.innerText = "Execution Error: " + err.message;
+            explanationOutput.innerText = err.message;
         } finally {
             sendBtn.disabled = false;
         }
