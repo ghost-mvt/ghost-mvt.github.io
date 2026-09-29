@@ -1,0 +1,186 @@
+/* style.css */
+.cyber-lab-app {
+    background-color: transparent;
+    color: inherit;
+    display: block;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    font-family: inherit;
+    direction: ltr;
+    text-align: left;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.cyber-lab-app * {
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.cyber-lab-app .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 12px;
+    border-bottom: 1px solid currentColor;
+    margin-bottom: 20px;
+    opacity: 0.7;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.cyber-lab-app .action-btn {
+    background-color: transparent;
+    color: inherit;
+    border: 1px solid currentColor;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.cyber-lab-app .action-btn:hover {
+    opacity: 0.7;
+}
+
+.cyber-lab-app .form-group {
+    margin-bottom: 20px;
+    position: relative;
+}
+
+.cyber-lab-app label {
+    display: block;
+    margin-bottom: 8px;
+    color: inherit;
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.5px;
+}
+
+.cyber-lab-app .search-input, 
+.cyber-lab-app .code-input {
+    width: 100%;
+    padding: 12px;
+    background-color: transparent;
+    color: inherit;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+}
+
+.cyber-lab-app textarea.code-input {
+    resize: vertical;
+    min-height: 90px;
+}
+
+.cyber-lab-app .dropdown-list {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: inherit;
+    border: 1px solid currentColor;
+    border-radius: 0 0 6px 6px;
+}
+
+.cyber-lab-app .dropdown-list.active { display: block; }
+
+.cyber-lab-app .dropdown-item {
+    padding: 10px;
+    font-size: 12px;
+    color: inherit;
+    cursor: pointer;
+    border-bottom: 1px solid currentColor;
+}
+
+.cyber-lab-app .dropdown-item:hover {
+    opacity: 0.8;
+}
+
+.cyber-lab-app .editor-wrapper {
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    background-color: transparent;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.cyber-lab-app .editor-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: transparent;
+    padding: 8px 12px;
+    border-bottom: 1px solid currentColor;
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.cyber-lab-app .header-actions { display: flex; gap: 6px; }
+
+.cyber-lab-app button.execute-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: transparent;
+    color: inherit;
+    border: 1px solid currentColor;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    transition: opacity 0.2s;
+}
+
+.cyber-lab-app button.execute-btn:hover {
+    opacity: 0.8;
+}
+
+.cyber-lab-app button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.cyber-lab-app .output-box {
+    padding: 12px;
+    min-height: 80px;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    line-height: 1.5;
+    color: inherit;
+    font-size: 13px;
+}
+
+.cyber-lab-app .embedded-code-box {
+    display: none;
+    margin-top: 15px;
+    border-top: 1px solid currentColor;
+    background-color: transparent;
+}
+
+.cyber-lab-app .embedded-code-box .code-content {
+    padding: 10px;
+    color: inherit;
+    font-size: 12px;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+.cyber-lab-app .error { 
+    font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    .cyber-lab-app .card-header { flex-direction: column; align-items: flex-start; gap: 5px; }
+}
+
+@media (max-width: 480px) {
+    .cyber-lab-app .action-btn { padding: 4px 6px; font-size: 10px; }
+    .cyber-lab-app button.execute-btn { padding: 10px; font-size: 12px; }
+}
