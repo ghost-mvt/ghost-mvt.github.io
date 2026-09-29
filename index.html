@@ -12,6 +12,15 @@
 
         <span id="currentTokenValue" style="display: none;"></span>
 
+        <!-- API Key Input Section -->
+        <div class="form-group">
+            <label for="apiKeyInput" style="font-size: 12px; color: #888888;">🔑 Hugging Face API Key:</label>
+            <input type="password" id="apiKeyInput" class="search-input" placeholder="Enter your HF token (hf_xxxxx...)" autocomplete="off">
+            <small style="color: #666; font-size: 11px; margin-top: 4px; display: block;">
+                Get one from: <a href="https://huggingface.co/settings/tokens" target="_blank" style="color: #4a9eff; text-decoration: none;">huggingface.co/settings/tokens</a> (Free tier works!)
+            </small>
+        </div>
+
         <div class="form-group">
             <input type="text" id="modelSearch" class="search-input" value="meta-llama/Llama-3.1-8B-Instruct" placeholder="Search models..." autocomplete="off">
             <div id="modelDropdown" class="dropdown-list"></div>
